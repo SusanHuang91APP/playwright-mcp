@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod';
-import { defineTool, type ToolFactory } from './tool.js';
+import { defineTool, withBrowserId, browserIdOnlySchema, type ToolFactory } from './tool.js';
 
 const listTabs = defineTool({
   capability: 'tabs',
@@ -24,7 +24,7 @@ const listTabs = defineTool({
     name: 'browser_tab_list',
     title: 'List tabs',
     description: 'List browser tabs',
-    inputSchema: z.object({}),
+    inputSchema: browserIdOnlySchema(),
     type: 'readOnly',
   },
 
@@ -51,9 +51,9 @@ const selectTab: ToolFactory = captureSnapshot => defineTool({
     name: 'browser_tab_select',
     title: 'Select a tab',
     description: 'Select a tab by index',
-    inputSchema: z.object({
+    inputSchema: withBrowserId(z.object({
       index: z.number().describe('The index of the tab to select'),
-    }),
+    })),
     type: 'readOnly',
   },
 
@@ -78,9 +78,9 @@ const newTab: ToolFactory = captureSnapshot => defineTool({
     name: 'browser_tab_new',
     title: 'Open a new tab',
     description: 'Open a new tab',
-    inputSchema: z.object({
+    inputSchema: withBrowserId(z.object({
       url: z.string().optional().describe('The URL to navigate to in the new tab. If not provided, the new tab will be blank.'),
-    }),
+    })),
     type: 'readOnly',
   },
 
@@ -107,9 +107,9 @@ const closeTab: ToolFactory = captureSnapshot => defineTool({
     name: 'browser_tab_close',
     title: 'Close a tab',
     description: 'Close a tab',
-    inputSchema: z.object({
+    inputSchema: withBrowserId(z.object({
       index: z.number().optional().describe('The index of the tab to close. Closes current tab if not provided.'),
-    }),
+    })),
     type: 'destructive',
   },
 

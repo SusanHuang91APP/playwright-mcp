@@ -16,6 +16,7 @@
 
 import type { ImageContent, TextContent } from '@modelcontextprotocol/sdk/types.js';
 import type { z } from 'zod';
+import { z as zod } from 'zod';
 import type { Context } from '../context.js';
 import type * as playwright from 'playwright';
 import type { ToolCapability } from '../../config.js';
@@ -65,4 +66,23 @@ export type ToolFactory = (snapshot: boolean) => Tool<any>;
 
 export function defineTool<Input extends InputType>(tool: Tool<Input>): Tool<Input> {
   return tool;
+}
+
+/**
+ * 擴展工具的 inputSchema 以支援可選的 browserId 參數
+ * 這使得所有工具都能支援多瀏覽器實例管理
+ */
+export function withBrowserId<T extends z.ZodRawShape>(schema: z.ZodObject<T>) {
+  return schema.extend({
+    browserId: zod.string().optional().describe('Browser instance ID (uses default if not specified)')
+  });
+}
+
+/**
+ * 為空 schema 添加 browserId 參數的便利函數
+ */
+export function browserIdOnlySchema() {
+  return zod.object({
+    browserId: zod.string().optional().describe('Browser instance ID (uses default if not specified)')
+  });
 }

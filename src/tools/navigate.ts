@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod';
-import { defineTool, type ToolFactory } from './tool.js';
+import { defineTool, withBrowserId, browserIdOnlySchema, type ToolFactory } from './tool.js';
 
 const navigate: ToolFactory = captureSnapshot => defineTool({
   capability: 'core',
@@ -24,9 +24,9 @@ const navigate: ToolFactory = captureSnapshot => defineTool({
     name: 'browser_navigate',
     title: 'Navigate to a URL',
     description: 'Navigate to a URL',
-    inputSchema: z.object({
+    inputSchema: withBrowserId(z.object({
       url: z.string().describe('The URL to navigate to'),
-    }),
+    })),
     type: 'destructive',
   },
 
@@ -53,7 +53,7 @@ const goBack: ToolFactory = captureSnapshot => defineTool({
     name: 'browser_navigate_back',
     title: 'Go back',
     description: 'Go back to the previous page',
-    inputSchema: z.object({}),
+    inputSchema: browserIdOnlySchema(),
     type: 'readOnly',
   },
 
@@ -79,7 +79,7 @@ const goForward: ToolFactory = captureSnapshot => defineTool({
     name: 'browser_navigate_forward',
     title: 'Go forward',
     description: 'Go forward to the next page',
-    inputSchema: z.object({}),
+    inputSchema: browserIdOnlySchema(),
     type: 'readOnly',
   },
   handle: async context => {

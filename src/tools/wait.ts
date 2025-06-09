@@ -15,56 +15,63 @@
  */
 
 import { z } from 'zod';
-import { defineTool, type ToolFactory } from './tool.js';
+import { defineTool, withBrowserId, type ToolFactory } from './tool.js';
 
-const wait: ToolFactory = captureSnapshot => defineTool({
+const waitFor: ToolFactory = captureSnapshot => defineTool({
   capability: 'wait',
 
   schema: {
     name: 'browser_wait_for',
-    title: 'Wait for',
+    title: 'Wait for text or time',
     description: 'Wait for text to appear or disappear or a specified time to pass',
-    inputSchema: z.object({
-      time: z.number().optional().describe('The time to wait in seconds'),
+    inputSchema: withBrowserId(z.object({
       text: z.string().optional().describe('The text to wait for'),
       textGone: z.string().optional().describe('The text to wait for to disappear'),
-    }),
+      time: z.number().optional().describe('The time to wait in seconds'),
+    })),
     type: 'readOnly',
   },
 
   handle: async (context, params) => {
-    if (!params.text && !params.textGone && !params.time)
-      throw new Error('Either time, text or textGone must be provided');
-
+    const tab = context.currentTabOrDie();
+    let resultText = '';
     const code: string[] = [];
 
+    if (params.text) {
+      await tab.page.waitForFunction(text => document.body.innerText.includes(text), params.text);
+      resultText += `Text "${params.text}" appeared. `;
+      code.push(`// Wait for text "${params.text}" to appear`);
+      code.push(`await page.waitForFunction((text) => document.body.innerText.includes(text), '${params.text}');`);
+    }
+
+    if (params.textGone) {
+      await tab.page.waitForFunction(text => !document.body.innerText.includes(text), params.textGone);
+      resultText += `Text "${params.textGone}" disappeared. `;
+      code.push(`// Wait for text "${params.textGone}" to disappear`);
+      code.push(`await page.waitForFunction((text) => !document.body.innerText.includes(text), '${params.textGone}');`);
+    }
+
     if (params.time) {
-      code.push(`await new Promise(f => setTimeout(f, ${params.time!} * 1000));`);
-      await new Promise(f => setTimeout(f, Math.min(10000, params.time! * 1000)));
-    }
-
-    const tab = context.currentTabOrDie();
-    const locator = params.text ? tab.page.getByText(params.text).first() : undefined;
-    const goneLocator = params.textGone ? tab.page.getByText(params.textGone).first() : undefined;
-
-    if (goneLocator) {
-      code.push(`await page.getByText(${JSON.stringify(params.textGone)}).first().waitFor({ state: 'hidden' });`);
-      await goneLocator.waitFor({ state: 'hidden' });
-    }
-
-    if (locator) {
-      code.push(`await page.getByText(${JSON.stringify(params.text)}).first().waitFor({ state: 'visible' });`);
-      await locator.waitFor({ state: 'visible' });
+      await tab.page.waitForTimeout(params.time * 1000);
+      resultText += `Waited for ${params.time} seconds. `;
+      code.push(`// Wait for ${params.time} seconds`);
+      code.push(`await page.waitForTimeout(${params.time * 1000});`);
     }
 
     return {
       code,
       captureSnapshot,
       waitForNetwork: false,
+      resultOverride: {
+        content: [{
+          type: 'text',
+          text: resultText || 'No wait action specified',
+        }],
+      },
     };
   },
 });
 
 export default (captureSnapshot: boolean) => [
-  wait(captureSnapshot),
+  waitFor(captureSnapshot),
 ];

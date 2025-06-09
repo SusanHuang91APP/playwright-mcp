@@ -17,8 +17,7 @@
 import { fork } from 'child_process';
 import path from 'path';
 
-import { z } from 'zod';
-import { defineTool } from './tool.js';
+import { defineTool, browserIdOnlySchema } from './tool.js';
 
 import { fileURLToPath } from 'node:url';
 
@@ -28,7 +27,7 @@ const install = defineTool({
     name: 'browser_install',
     title: 'Install the browser specified in the config',
     description: 'Install the browser specified in the config. Call this if you get an error about the browser not being installed.',
-    inputSchema: z.object({}),
+    inputSchema: browserIdOnlySchema(),
     type: 'destructive',
   },
 

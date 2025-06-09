@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod';
-import { defineTool, type ToolFactory } from './tool.js';
+import { defineTool, withBrowserId, type ToolFactory } from './tool.js';
 
 const pressKey: ToolFactory = captureSnapshot => defineTool({
   capability: 'core',
@@ -24,27 +24,24 @@ const pressKey: ToolFactory = captureSnapshot => defineTool({
     name: 'browser_press_key',
     title: 'Press a key',
     description: 'Press a key on the keyboard',
-    inputSchema: z.object({
+    inputSchema: withBrowserId(z.object({
       key: z.string().describe('Name of the key to press or a character to generate, such as `ArrowLeft` or `a`'),
-    }),
+    })),
     type: 'destructive',
   },
 
   handle: async (context, params) => {
     const tab = context.currentTabOrDie();
-
     const code = [
-      `// Press ${params.key}`,
-      `await page.keyboard.press('${params.key}');`,
+      `// Press "${params.key}" key`,
+      `await page.keyboard.press(${JSON.stringify(params.key)});`,
     ];
-
-    const action = () => tab.page.keyboard.press(params.key);
 
     return {
       code,
-      action,
+      action: () => tab.page.keyboard.press(params.key),
       captureSnapshot,
-      waitForNetwork: true
+      waitForNetwork: false,
     };
   },
 });

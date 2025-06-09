@@ -15,10 +15,9 @@
  */
 
 import { z } from 'zod';
-
-import { defineTool } from './tool.js';
-import * as javascript from '../javascript.js';
+import { defineTool, withBrowserId, browserIdOnlySchema } from './tool.js';
 import { generateLocator } from './utils.js';
+import * as javascript from '../javascript.js';
 
 const snapshot = defineTool({
   capability: 'core',
@@ -26,7 +25,7 @@ const snapshot = defineTool({
     name: 'browser_snapshot',
     title: 'Page snapshot',
     description: 'Capture accessibility snapshot of the current page, this is better than screenshot',
-    inputSchema: z.object({}),
+    inputSchema: browserIdOnlySchema(),
     type: 'readOnly',
   },
 
@@ -41,10 +40,10 @@ const snapshot = defineTool({
   },
 });
 
-const elementSchema = z.object({
+const elementSchema = withBrowserId(z.object({
   element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
   ref: z.string().describe('Exact target element reference from the page snapshot'),
-});
+}));
 
 const click = defineTool({
   capability: 'core',
@@ -80,12 +79,12 @@ const drag = defineTool({
     name: 'browser_drag',
     title: 'Drag mouse',
     description: 'Perform drag and drop between two elements',
-    inputSchema: z.object({
+    inputSchema: withBrowserId(z.object({
       startElement: z.string().describe('Human-readable source element description used to obtain the permission to interact with the element'),
       startRef: z.string().describe('Exact source element reference from the page snapshot'),
       endElement: z.string().describe('Human-readable target element description used to obtain the permission to interact with the element'),
       endRef: z.string().describe('Exact target element reference from the page snapshot'),
-    }),
+    })),
     type: 'destructive',
   },
 
@@ -136,11 +135,13 @@ const hover = defineTool({
   },
 });
 
-const typeSchema = elementSchema.extend({
+const typeSchema = withBrowserId(z.object({
+  element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
+  ref: z.string().describe('Exact target element reference from the page snapshot'),
   text: z.string().describe('Text to type into the element'),
   submit: z.boolean().optional().describe('Whether to submit entered text (press Enter after)'),
   slowly: z.boolean().optional().describe('Whether to type one character at a time. Useful for triggering key handlers in the page. By default entire text is filled in at once.'),
-});
+}));
 
 const type = defineTool({
   capability: 'core',
@@ -184,9 +185,11 @@ const type = defineTool({
   },
 });
 
-const selectOptionSchema = elementSchema.extend({
+const selectOptionSchema = withBrowserId(z.object({
+  element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
+  ref: z.string().describe('Exact target element reference from the page snapshot'),
   values: z.array(z.string()).describe('Array of values to select in the dropdown. This can be a single value or multiple values.'),
-});
+}));
 
 const selectOption = defineTool({
   capability: 'core',

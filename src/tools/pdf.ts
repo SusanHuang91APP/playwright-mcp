@@ -15,44 +15,50 @@
  */
 
 import { z } from 'zod';
-import { defineTool } from './tool.js';
-
-import * as javascript from '../javascript.js';
+import { defineTool, withBrowserId, type ToolFactory } from './tool.js';
 import { outputFile } from '../config.js';
+import { sanitizeForFilePath } from './utils.js';
 
-const pdfSchema = z.object({
-  filename: z.string().optional().describe('File name to save the pdf to. Defaults to `page-{timestamp}.pdf` if not specified.'),
-});
-
-const pdf = defineTool({
+const savePdf: ToolFactory = captureSnapshot => defineTool({
   capability: 'pdf',
 
   schema: {
     name: 'browser_pdf_save',
-    title: 'Save as PDF',
+    title: 'Save page as PDF',
     description: 'Save page as PDF',
-    inputSchema: pdfSchema,
-    type: 'readOnly',
+    inputSchema: withBrowserId(z.object({
+      filename: z.string().optional().describe('File name to save the pdf to. Defaults to `page-{timestamp}.pdf` if not specified.'),
+    })),
+    type: 'destructive',
   },
 
   handle: async (context, params) => {
     const tab = context.currentTabOrDie();
-    const fileName = await outputFile(context.config, params.filename ?? `page-${new Date().toISOString()}.pdf`);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = params.filename || `page-${timestamp}.pdf`;
+    const path = await outputFile(context.config, sanitizeForFilePath(filename));
+
+    await tab.page.pdf({ path });
 
     const code = [
-      `// Save page as ${fileName}`,
-      `await page.pdf(${javascript.formatObject({ path: fileName })});`,
+      `// Save page as PDF: ${filename}`,
+      `await page.pdf({ path: '${path}' });`,
     ];
 
     return {
       code,
-      action: async () => tab.page.pdf({ path: fileName }).then(() => {}),
-      captureSnapshot: false,
+      captureSnapshot,
       waitForNetwork: false,
+      resultOverride: {
+        content: [{
+          type: 'text',
+          text: `PDF saved to ${path}`,
+        }],
+      },
     };
   },
 });
 
-export default [
-  pdf,
+export default (captureSnapshot: boolean) => [
+  savePdf(captureSnapshot),
 ];

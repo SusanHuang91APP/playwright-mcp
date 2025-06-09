@@ -14,37 +14,9 @@
  * limitations under the License.
  */
 
-import { z } from 'zod';
-import { defineTool } from './tool.js';
+import { defineTool, browserIdOnlySchema } from './tool.js';
 
 import type * as playwright from 'playwright';
-
-const requests = defineTool({
-  capability: 'core',
-
-  schema: {
-    name: 'browser_network_requests',
-    title: 'List network requests',
-    description: 'Returns all network requests since loading the page',
-    inputSchema: z.object({}),
-    type: 'readOnly',
-  },
-
-  handle: async context => {
-    const requests = context.currentTabOrDie().requests();
-    const log = [...requests.entries()].map(([request, response]) => renderRequest(request, response)).join('\n');
-    return {
-      code: [`// <internal code to list network requests>`],
-      action: async () => {
-        return {
-          content: [{ type: 'text', text: log }]
-        };
-      },
-      captureSnapshot: false,
-      waitForNetwork: false,
-    };
-  },
-});
 
 function renderRequest(request: playwright.Request, response: playwright.Response | null) {
   const result: string[] = [];
@@ -54,6 +26,35 @@ function renderRequest(request: playwright.Request, response: playwright.Respons
   return result.join(' ');
 }
 
+const networkRequests = defineTool({
+  capability: 'core',
+
+  schema: {
+    name: 'browser_network_requests',
+    title: 'Network requests',
+    description: 'Returns all network requests since loading the page',
+    inputSchema: browserIdOnlySchema(),
+    type: 'readOnly',
+  },
+
+  handle: async context => {
+    const requests = context.currentTabOrDie().requests();
+    const log = [...requests.entries()].map(([request, response]) => renderRequest(request, response)).join('\n');
+
+    return {
+      code: [`// <internal code to get network requests>`],
+      captureSnapshot: false,
+      waitForNetwork: false,
+      resultOverride: {
+        content: [{
+          type: 'text',
+          text: log,
+        }],
+      },
+    };
+  },
+});
+
 export default [
-  requests,
+  networkRequests,
 ];

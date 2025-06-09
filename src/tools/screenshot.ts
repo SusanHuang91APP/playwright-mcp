@@ -15,76 +15,68 @@
  */
 
 import { z } from 'zod';
-
-import { defineTool } from './tool.js';
-import * as javascript from '../javascript.js';
+import { defineTool, withBrowserId, type ToolFactory } from './tool.js';
 import { outputFile } from '../config.js';
-import { generateLocator } from './utils.js';
+import { sanitizeForFilePath } from './utils.js';
 
-import type * as playwright from 'playwright';
-
-const screenshotSchema = z.object({
-  raw: z.boolean().optional().describe('Whether to return without compression (in PNG format). Default is false, which returns a JPEG image.'),
-  filename: z.string().optional().describe('File name to save the screenshot to. Defaults to `page-{timestamp}.{png|jpeg}` if not specified.'),
-  element: z.string().optional().describe('Human-readable element description used to obtain permission to screenshot the element. If not provided, the screenshot will be taken of viewport. If element is provided, ref must be provided too.'),
-  ref: z.string().optional().describe('Exact target element reference from the page snapshot. If not provided, the screenshot will be taken of viewport. If ref is provided, element must be provided too.'),
-}).refine(data => {
-  return !!data.element === !!data.ref;
-}, {
-  message: 'Both element and ref must be provided or neither.',
-  path: ['ref', 'element']
-});
-
-const screenshot = defineTool({
+const takeScreenshot: ToolFactory = captureSnapshot => defineTool({
   capability: 'core',
+
   schema: {
     name: 'browser_take_screenshot',
     title: 'Take a screenshot',
-    description: `Take a screenshot of the current page. You can't perform actions based on the screenshot, use browser_snapshot for actions.`,
-    inputSchema: screenshotSchema,
+    description: 'Take a screenshot of the current page. You can\'t perform actions based on the screenshot, use browser_snapshot for actions.',
+    inputSchema: withBrowserId(z.object({
+      element: z.string().optional().describe('Human-readable element description used to obtain permission to screenshot the element. If not provided, the screenshot will be taken of viewport. If element is provided, ref must be provided too.'),
+      ref: z.string().optional().describe('Exact target element reference from the page snapshot. If not provided, the screenshot will be taken of viewport. If ref is provided, element must be provided too.'),
+      filename: z.string().optional().describe('File name to save the screenshot to. Defaults to `page-{timestamp}.{png|jpeg}` if not specified.'),
+      raw: z.boolean().optional().describe('Whether to return without compression (in PNG format). Default is false, which returns a JPEG image.'),
+    })),
     type: 'readOnly',
   },
 
   handle: async (context, params) => {
     const tab = context.currentTabOrDie();
-    const snapshot = tab.snapshotOrDie();
-    const fileType = params.raw ? 'png' : 'jpeg';
-    const fileName = await outputFile(context.config, params.filename ?? `page-${new Date().toISOString()}.${fileType}`);
-    const options: playwright.PageScreenshotOptions = { type: fileType, quality: fileType === 'png' ? undefined : 50, scale: 'css', path: fileName };
-    const isElementScreenshot = params.element && params.ref;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const extension = params.raw ? 'png' : 'jpeg';
+    const filename = params.filename || `page-${timestamp}.${extension}`;
+    const path = await outputFile(context.config, sanitizeForFilePath(filename));
 
-    const code = [
-      `// Screenshot ${isElementScreenshot ? params.element : 'viewport'} and save it as ${fileName}`,
-    ];
+    if (params.element && params.ref) {
+      // Screenshot of specific element
+      const snapshot = tab.snapshotOrDie();
+      const locator = snapshot.refLocator({ ref: params.ref, element: params.element });
+      await locator.screenshot({ type: params.raw ? 'png' : 'jpeg', path });
+    } else {
+      // Screenshot of full page
+      await tab.page.screenshot({
+        path,
+        type: params.raw ? 'png' : 'jpeg',
+        fullPage: true
+      });
+    }
 
-    const locator = params.ref ? snapshot.refLocator({ element: params.element || '', ref: params.ref }) : null;
-
-    if (locator)
-      code.push(`await page.${await generateLocator(locator)}.screenshot(${javascript.formatObject(options)});`);
-    else
-      code.push(`await page.screenshot(${javascript.formatObject(options)});`);
-
-    const includeBase64 = context.clientSupportsImages();
-    const action = async () => {
-      const screenshot = locator ? await locator.screenshot(options) : await tab.page.screenshot(options);
-      return {
-        content: includeBase64 ? [{
-          type: 'image' as 'image',
-          data: screenshot.toString('base64'),
-          mimeType: fileType === 'png' ? 'image/png' : 'image/jpeg',
-        }] : []
-      };
-    };
+          const code = [
+        `// Take screenshot: ${filename}`,
+        params.element
+          ? `await page.locator('${params.ref}').screenshot({ path: '${path}', type: '${extension}' });`
+          : `await page.screenshot({ path: '${path}', type: '${extension}', fullPage: true });`,
+      ];
 
     return {
       code,
-      action,
-      captureSnapshot: true,
+      captureSnapshot: false,
       waitForNetwork: false,
+      resultOverride: {
+        content: [{
+          type: 'text',
+          text: `Screenshot saved to ${path}`,
+        }],
+      },
     };
-  }
+  },
 });
 
-export default [
-  screenshot,
+export default (captureSnapshot: boolean) => [
+  takeScreenshot(captureSnapshot),
 ];

@@ -43,11 +43,11 @@ export const snapshotTools: Tool<any>[] = [
   ...keyboard(true),
   ...navigate(true),
   ...network,
-  ...pdf,
-  ...screenshot,
+  ...pdf(true),
+  ...screenshot(true),
   ...snapshot,
   ...tabs(true),
-  ...testing,
+  ...testing(true),
   ...wait(true),
 ];
 
@@ -61,9 +61,9 @@ export const visionTools: Tool<any>[] = [
   ...keyboard(false),
   ...navigate(false),
   ...network,
-  ...pdf,
+  ...pdf(false),
   ...tabs(false),
-  ...testing,
+  ...testing(false),
   ...vision,
   ...wait(false),
 ];

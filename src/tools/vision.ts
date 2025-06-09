@@ -15,13 +15,9 @@
  */
 
 import { z } from 'zod';
-import { defineTool } from './tool.js';
+import { defineTool, withBrowserId, browserIdOnlySchema } from './tool.js';
 
 import * as javascript from '../javascript.js';
-
-const elementSchema = z.object({
-  element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
-});
 
 const screenshot = defineTool({
   capability: 'core',
@@ -29,7 +25,7 @@ const screenshot = defineTool({
     name: 'browser_screen_capture',
     title: 'Take a screenshot',
     description: 'Take a screenshot of the current page',
-    inputSchema: z.object({}),
+    inputSchema: browserIdOnlySchema(),
     type: 'readOnly',
   },
 
@@ -63,10 +59,11 @@ const moveMouse = defineTool({
     name: 'browser_screen_move_mouse',
     title: 'Move mouse',
     description: 'Move mouse to a given position',
-    inputSchema: elementSchema.extend({
+    inputSchema: withBrowserId(z.object({
+      element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
       x: z.number().describe('X coordinate'),
       y: z.number().describe('Y coordinate'),
-    }),
+    })),
     type: 'readOnly',
   },
 
@@ -92,10 +89,11 @@ const click = defineTool({
     name: 'browser_screen_click',
     title: 'Click',
     description: 'Click left mouse button',
-    inputSchema: elementSchema.extend({
+    inputSchema: withBrowserId(z.object({
+      element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
       x: z.number().describe('X coordinate'),
       y: z.number().describe('Y coordinate'),
-    }),
+    })),
     type: 'destructive',
   },
 
@@ -127,12 +125,13 @@ const drag = defineTool({
     name: 'browser_screen_drag',
     title: 'Drag mouse',
     description: 'Drag left mouse button',
-    inputSchema: elementSchema.extend({
+    inputSchema: withBrowserId(z.object({
+      element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
       startX: z.number().describe('Start X coordinate'),
       startY: z.number().describe('Start Y coordinate'),
       endX: z.number().describe('End X coordinate'),
       endY: z.number().describe('End Y coordinate'),
-    }),
+    })),
     type: 'destructive',
   },
 
@@ -169,10 +168,10 @@ const type = defineTool({
     name: 'browser_screen_type',
     title: 'Type text',
     description: 'Type text',
-    inputSchema: z.object({
+    inputSchema: withBrowserId(z.object({
       text: z.string().describe('Text to type into the element'),
       submit: z.boolean().optional().describe('Whether to submit entered text (press Enter after)'),
-    }),
+    })),
     type: 'destructive',
   },
 
