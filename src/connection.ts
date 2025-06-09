@@ -21,6 +21,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import { Context } from './context.js';
 import { snapshotTools, visionTools } from './tools.js';
 import { packageJSON } from './package.js';
+import { ContextManager, setGlobalContextManager } from './contextManager.js';
 
 import { FullConfig } from './config.js';
 
@@ -30,7 +31,13 @@ export function createConnection(config: FullConfig, browserContextFactory: Brow
   const allTools = config.vision ? visionTools : snapshotTools;
   const tools = allTools.filter(tool => !config.capabilities || tool.capability === 'core' || config.capabilities.includes(tool.capability));
 
-  const context = new Context(tools, config, browserContextFactory);
+  // 創建 ContextManager
+  const contextManager = new ContextManager(tools, config);
+  setGlobalContextManager(contextManager);
+
+  // 創建預設 Context（向後兼容）
+  const defaultContext = new Context(tools, config, browserContextFactory);
+
   const server = new McpServer({ name: 'Playwright', version: packageJSON.version }, {
     capabilities: {
       tools: {},
@@ -62,6 +69,8 @@ export function createConnection(config: FullConfig, browserContextFactory: Brow
     if (!tool)
       return errorResult(`Tool "${request.params.name}" not found`);
 
+    // 🔑 關鍵：根據請求參數解析 Context
+    const context = await resolveContext(contextManager, defaultContext, request.params.arguments);
 
     const modalStates = context.modalStates().map(state => state.type);
     if (tool.clearsModalState && !modalStates.includes(tool.clearsModalState))
@@ -76,23 +85,47 @@ export function createConnection(config: FullConfig, browserContextFactory: Brow
     }
   });
 
-  return new Connection(server, context);
+  return new Connection(server, contextManager, defaultContext);
+}
+
+/**
+ * 根據請求參數解析 Context
+ */
+async function resolveContext(
+  manager: ContextManager,
+  defaultContext: Context,
+  args: any
+): Promise<Context> {
+  // 如果沒有指定 browserId，使用預設 Context（向後兼容）
+  if (!args?.browserId)
+    return defaultContext;
+
+  // 如果指定了 browserId，嘗試獲取對應的 Context
+  try {
+    return await manager.getContext(args.browserId);
+  } catch (error) {
+    // 如果指定的瀏覽器實例不存在，拋出錯誤
+    throw new Error(`Browser instance '${args.browserId}' not found. Use browser_create_instance to create it first.`);
+  }
 }
 
 export class Connection {
   readonly server: McpServer;
-  readonly context: Context;
+  readonly contextManager: ContextManager;
+  readonly defaultContext: Context;
 
-  constructor(server: McpServer, context: Context) {
+  constructor(server: McpServer, contextManager: ContextManager, defaultContext: Context) {
     this.server = server;
-    this.context = context;
+    this.contextManager = contextManager;
+    this.defaultContext = defaultContext;
     this.server.oninitialized = () => {
-      this.context.clientVersion = this.server.getClientVersion();
+      this.defaultContext.clientVersion = this.server.getClientVersion();
     };
   }
 
   async close() {
     await this.server.close();
-    await this.context.close();
+    await this.contextManager.closeAll();
+    await this.defaultContext.close();
   }
 }

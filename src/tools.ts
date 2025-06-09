@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import browser from './tools/browser.js';
 import common from './tools/common.js';
 import console from './tools/console.js';
 import dialogs from './tools/dialogs.js';
@@ -33,6 +34,7 @@ import wait from './tools/wait.js';
 import type { Tool } from './tools/tool.js';
 
 export const snapshotTools: Tool<any>[] = [
+  ...browser(true),
   ...common(true),
   ...console,
   ...dialogs(true),
@@ -50,6 +52,7 @@ export const snapshotTools: Tool<any>[] = [
 ];
 
 export const visionTools: Tool<any>[] = [
+  ...browser(false),
   ...common(false),
   ...console,
   ...dialogs(false),
