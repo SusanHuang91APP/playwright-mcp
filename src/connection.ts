@@ -70,7 +70,7 @@ export function createConnection(config: FullConfig, browserContextFactory: Brow
       return errorResult(`Tool "${request.params.name}" not found`);
 
     // 🔑 關鍵：根據請求參數解析 Context
-    const context = await resolveContext(contextManager, defaultContext, request.params.arguments);
+    const context = await resolveContext(contextManager, defaultContext, request.params.arguments, request.params.name);
 
     const modalStates = context.modalStates().map(state => state.type);
     if (tool.clearsModalState && !modalStates.includes(tool.clearsModalState))
@@ -94,17 +94,27 @@ export function createConnection(config: FullConfig, browserContextFactory: Brow
 async function resolveContext(
   manager: ContextManager,
   defaultContext: Context,
-  args: any
+  args: any,
+  toolName?: string
 ): Promise<Context> {
+  // 🔑 特殊處理：browser_create_instance 工具總是使用 defaultContext
   // 如果沒有指定 browserId，使用預設 Context（向後兼容）
-  if (!args?.browserId)
+  if (!args?.browserId || toolName === 'browser_create_instance')
     return defaultContext;
 
   // 如果指定了 browserId，嘗試獲取對應的 Context
   try {
     return await manager.getContext(args.browserId);
   } catch (error) {
-    // 如果指定的瀏覽器實例不存在，拋出錯誤
+    // 🔧 改進：如果實例不存在，自動創建它（除了 browser_create_instance 工具）
+    if (toolName !== 'browser_create_instance') {
+      try {
+        const browserId = await manager.createBrowserInstance({ id: args.browserId });
+        return await manager.getContext(browserId);
+      } catch (createError) {
+        throw new Error(`Browser instance '${args.browserId}' not found and could not be created automatically. ${createError}`);
+      }
+    }
     throw new Error(`Browser instance '${args.browserId}' not found. Use browser_create_instance to create it first.`);
   }
 }

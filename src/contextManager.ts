@@ -39,7 +39,7 @@ export interface ContextManagerOptions {
 }
 
 interface ManagedContext {
-  id: string;
+  browserId: string;
   context: Context;
   config: BrowserInstanceConfig;
   lastAccess: number;
@@ -70,15 +70,15 @@ export class ContextManager {
    * 創建新的瀏覽器實例
    */
   async createBrowserInstance(config: BrowserInstanceConfig = {}): Promise<string> {
-    const id = config.id || this._generateId();
+    const browserId = config.id || this._generateId();
 
     // 檢查是否超過最大實例數
     if (this._contexts.size >= this._options.maxInstances)
       await this._cleanupOldestInstance();
 
     // 檢查 ID 是否已存在
-    if (this._contexts.has(id))
-      throw new Error(`Browser instance with ID '${id}' already exists`);
+    if (this._contexts.has(browserId))
+      throw new Error(`Browser instance with ID '${browserId}' already exists`);
 
     // 創建配置對象
     const browserConfig = {
@@ -104,25 +104,25 @@ export class ContextManager {
 
     // 存儲管理的上下文
     const managedContext: ManagedContext = {
-      id,
+      browserId,
       context,
       config,
       lastAccess: Date.now(),
       browserType: config.browserType || 'chromium',
     };
 
-    this._contexts.set(id, managedContext);
+    this._contexts.set(browserId, managedContext);
 
-    return id;
+    return browserId;
   }
 
   /**
    * 根據 ID 獲取 Context
    */
-  async getContext(id: string): Promise<Context> {
-    const managedContext = this._contexts.get(id);
+  async getContext(browserId: string): Promise<Context> {
+    const managedContext = this._contexts.get(browserId);
     if (!managedContext)
-      throw new Error(`Browser instance with ID '${id}' not found`);
+      throw new Error(`Browser instance with ID '${browserId}' not found`);
 
     // 更新最後訪問時間
     managedContext.lastAccess = Date.now();
@@ -134,13 +134,13 @@ export class ContextManager {
    * 列出所有瀏覽器實例
    */
   listInstances(): Array<{
-    id: string;
+    browserId: string;
     browserType: string;
     lastAccess: number;
     config: BrowserInstanceConfig;
   }> {
     return Array.from(this._contexts.values()).map(managed => ({
-      id: managed.id,
+      browserId: managed.browserId,
       browserType: managed.browserType,
       lastAccess: managed.lastAccess,
       config: managed.config,

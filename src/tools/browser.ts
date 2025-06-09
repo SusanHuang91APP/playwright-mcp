@@ -58,6 +58,17 @@ const browserCreate: ToolFactory = () => defineTool({
       code,
       captureSnapshot: false,
       waitForNetwork: false,
+      resultOverride: {
+        content: [{
+          type: 'text',
+          text: [
+            '- Ran Playwright code:',
+            '```js',
+            ...code,
+            '```',
+          ].join('\n'),
+        }],
+      },
     };
   },
 });
@@ -83,7 +94,7 @@ const browserList: ToolFactory = () => defineTool({
     const code = [
       `// Browser instances (${instances.length}/${stats.maxInstances}):`,
       ...instances.map(instance =>
-        `// - ${instance.id}: ${instance.browserType} (last access: ${new Date(instance.lastAccess).toISOString()})`
+        `// - ${instance.browserId}: ${instance.browserType} (last access: ${new Date(instance.lastAccess).toISOString()})`
       ),
     ];
 
@@ -91,6 +102,17 @@ const browserList: ToolFactory = () => defineTool({
       code,
       captureSnapshot: false,
       waitForNetwork: false,
+      resultOverride: {
+        content: [{
+          type: 'text',
+          text: [
+            '- Ran Playwright code:',
+            '```js',
+            ...code,
+            '```',
+          ].join('\n'),
+        }],
+      },
     };
   },
 });
@@ -122,6 +144,17 @@ const browserClose: ToolFactory = () => defineTool({
       code,
       captureSnapshot: false,
       waitForNetwork: false,
+      resultOverride: {
+        content: [{
+          type: 'text',
+          text: [
+            '- Ran Playwright code:',
+            '```js',
+            ...code,
+            '```',
+          ].join('\n'),
+        }],
+      },
     };
   },
 });
@@ -155,6 +188,17 @@ const browserStats: ToolFactory = () => defineTool({
       code,
       captureSnapshot: false,
       waitForNetwork: false,
+      resultOverride: {
+        content: [{
+          type: 'text',
+          text: [
+            '- Ran Playwright code:',
+            '```js',
+            ...code,
+            '```',
+          ].join('\n'),
+        }],
+      },
     };
   },
 });
