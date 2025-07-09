@@ -15,13 +15,10 @@
  */
 
 import fs from 'node:fs';
-import net from 'node:net';
-import path from 'node:path';
-import os from 'node:os';
-
 import debug from 'debug';
 import * as playwright from 'playwright';
 import { userDataDir } from './fileUtils.js';
+import { findFreePort } from './tools/utils.js';
 
 import type { FullConfig } from './config.js';
 import type { BrowserInfo, LaunchBrowserRequest } from './browserServer.js';
@@ -202,18 +199,9 @@ class PersistentContextFactory implements BrowserContextFactory {
   }
 
   private async _createUserDataDir() {
-    let cacheDirectory: string;
-    if (process.platform === 'linux')
-      cacheDirectory = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
-    else if (process.platform === 'darwin')
-      cacheDirectory = path.join(os.homedir(), 'Library', 'Caches');
-    else if (process.platform === 'win32')
-      cacheDirectory = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
-    else
-      throw new Error('Unsupported platform: ' + process.platform);
-    const result = path.join(cacheDirectory, 'ms-playwright', `mcp-${this.browserConfig.launchOptions?.channel ?? this.browserConfig?.browserName}-profile`);
-    await fs.promises.mkdir(result, { recursive: true });
-    return result;
+    const dir = await userDataDir(this.browserConfig);
+    await fs.promises.mkdir(dir, { recursive: true });
+    return dir;
   }
 }
 
@@ -252,15 +240,4 @@ export class BrowserServerContextFactory extends BaseContextFactory {
 async function injectCdpPort(browserConfig: FullConfig['browser']) {
   if (browserConfig.browserName === 'chromium')
     (browserConfig.launchOptions as any).cdpPort = await findFreePort();
-}
-
-async function findFreePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.listen(0, () => {
-      const { port } = server.address() as net.AddressInfo;
-      server.close(() => resolve(port));
-    });
-    server.on('error', reject);
-  });
 }

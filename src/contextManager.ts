@@ -19,8 +19,11 @@ import { contextFactory } from './browserContextFactory.js';
 import type { Tool } from './tools/tool.js';
 import type { FullConfig } from './config.js';
 
-export interface BrowserInstanceConfig {
-  id?: string;
+/**
+ * 實例設定
+ */
+export type BrowserInstanceConfig = {
+  browserId?: string;
   browserType?: 'chromium' | 'firefox' | 'webkit';
   headless?: boolean;
   userDataDir?: string;
@@ -30,12 +33,15 @@ export interface BrowserInstanceConfig {
     username?: string;
     password?: string;
   };
-}
+  allowedOrigins?: string[];
+  blockedOrigins?: string[];
+};
 
 export interface ContextManagerOptions {
   maxInstances?: number;
   instanceTimeout?: number; // 閒置超時時間（毫秒）
   cleanupInterval?: number; // 清理檢查間隔（毫秒）
+  onMaxInstances?: 'evict-oldest' | 'throw-error';
 }
 
 interface ManagedContext {
@@ -48,6 +54,7 @@ interface ManagedContext {
 
 export class ContextManager {
   private _contexts: Map<string, ManagedContext> = new Map();
+  private _pendingCreations: Map<string, Promise<string>> = new Map();
   private _cleanupTimer: NodeJS.Timeout | null = null;
   private _options: Required<ContextManagerOptions>;
   private _tools: Tool[];
@@ -60,6 +67,7 @@ export class ContextManager {
       maxInstances: options.maxInstances || 10,
       instanceTimeout: options.instanceTimeout || 30 * 60 * 1000, // 30分鐘
       cleanupInterval: options.cleanupInterval || 5 * 60 * 1000, // 5分鐘
+      onMaxInstances: options.onMaxInstances || 'evict-oldest',
     };
 
     // 啟動清理定時器
@@ -69,38 +77,62 @@ export class ContextManager {
   /**
    * 創建新的瀏覽器實例
    */
-  async createBrowserInstance(config: BrowserInstanceConfig = {}): Promise<string> {
-    const browserId = config.id || this._generateId();
+  async createBrowserInstance(config: BrowserInstanceConfig): Promise<string> {
+    const browserId = config.browserId || this._generateId();
 
-    // 檢查是否超過最大實例數
-    if (this._contexts.size >= this._options.maxInstances)
-      await this._cleanupOldestInstance();
-
-    // 檢查 ID 是否已存在
+    // 檢查是否已存在或正在創建
     if (this._contexts.has(browserId))
-      throw new Error(`Browser instance with ID '${browserId}' already exists`);
+      throw new Error(`Browser instance with id ${browserId} already exists`);
+    if (this._pendingCreations.has(browserId))
+      return this._pendingCreations.get(browserId)!;
 
-    // 創建配置對象
-    const browserConfig = {
-      ...this._baseConfig.browser,
-      browserName: (config.browserType || 'chromium') as 'chromium' | 'firefox' | 'webkit',
-      launchOptions: {
-        ...this._baseConfig.browser.launchOptions,
-        headless: config.headless ?? this._baseConfig.browser.launchOptions?.headless,
+    const creationPromise = this._createInstance(browserId, config);
+    this._pendingCreations.set(browserId, creationPromise);
+
+    try {
+      return await creationPromise;
+    } finally {
+      this._pendingCreations.delete(browserId);
+    }
+  }
+
+  private async _createInstance(browserId: string, config: BrowserInstanceConfig): Promise<string> {
+    // 檢查是否超過最大實例數
+    if (this._contexts.size >= this._options.maxInstances) {
+      if (this._options.onMaxInstances === 'throw-error')
+        throw new Error(`Cannot create new instance. Maximum number of instances (${this._options.maxInstances}) reached.`);
+      await this._cleanupOldestInstance();
+    }
+
+    // 創建一個新的 FullConfig，以便可以覆寫網路設定
+    const newConfig: FullConfig = {
+      ...this._baseConfig,
+      network: {
+        ...this._baseConfig.network,
+        allowedOrigins: config.allowedOrigins ?? this._baseConfig.network.allowedOrigins,
+        blockedOrigins: config.blockedOrigins ?? this._baseConfig.network.blockedOrigins,
       },
-      contextOptions: {
-        ...this._baseConfig.browser.contextOptions,
-        viewport: config.viewport,
-        proxy: config.proxy,
-      },
-      userDataDir: config.userDataDir,
+      browser: {
+        ...this._baseConfig.browser,
+        browserName: (config.browserType || 'chromium') as 'chromium' | 'firefox' | 'webkit',
+        launchOptions: {
+          ...this._baseConfig.browser.launchOptions,
+          headless: config.headless ?? this._baseConfig.browser.launchOptions?.headless,
+        },
+        contextOptions: {
+          ...this._baseConfig.browser.contextOptions,
+          viewport: config.viewport,
+          proxy: config.proxy,
+        },
+        userDataDir: config.userDataDir,
+      }
     };
 
     // 創建瀏覽器上下文工廠
-    const browserContextFactory = contextFactory(browserConfig);
+    const browserContextFactory = contextFactory(newConfig.browser);
 
     // 創建新的 Context
-    const context = new Context(this._tools, this._baseConfig, browserContextFactory);
+    const context = new Context(this._tools, newConfig, browserContextFactory);
 
     // 存儲管理的上下文
     const managedContext: ManagedContext = {
@@ -148,14 +180,15 @@ export class ContextManager {
   }
 
   /**
-   * 關閉指定的瀏覽器實例
+   * 關閉並清理指定的瀏覽器實例
+   * @param browserId
    */
-  async closeBrowserInstance(id: string): Promise<void> {
-    const managedContext = this._contexts.get(id);
-    if (managedContext) {
-      await managedContext.context.close();
-      this._contexts.delete(id);
-    }
+  async closeBrowserInstance(browserId: string) {
+    const instance = this._contexts.get(browserId);
+    if (!instance)
+      throw new Error(`Browser instance with ID '${browserId}' not found`);
+    await instance.context.close();
+    this._contexts.delete(browserId);
   }
 
   /**

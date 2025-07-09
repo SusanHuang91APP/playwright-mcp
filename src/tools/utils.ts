@@ -17,6 +17,7 @@
 import type * as playwright from 'playwright';
 import type { Context } from '../context.js';
 import type { Tab } from '../tab.js';
+import net from 'net';
 
 export async function waitForCompletion<R>(context: Context, tab: Tab, callback: () => Promise<R>): Promise<R> {
   const requests = new Set<playwright.Request>();
@@ -83,4 +84,15 @@ export async function generateLocator(locator: playwright.Locator): Promise<stri
 
 export async function callOnPageNoTrace<T>(page: playwright.Page, callback: (page: playwright.Page) => Promise<T>): Promise<T> {
   return await (page as any)._wrapApiCall(() => callback(page), { internal: true });
+}
+
+export async function findFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, () => {
+      const { port } = server.address() as net.AddressInfo;
+      server.close(() => resolve(port));
+    });
+    server.on('error', reject);
+  });
 }

@@ -1,785 +1,103 @@
 ## Playwright MCP
 
-A Model Context Protocol (MCP) server that provides browser automation capabilities using [Playwright](https://playwright.dev). This server enables LLMs to interact with web pages through structured accessibility snapshots, bypassing the need for screenshots or visually-tuned models.
+一個使用 [Playwright](https://playwright.dev) 提供瀏覽器自動化功能的模型內容協定 (MCP) 伺服器。此伺服器讓大型語言模型 (LLM) 能夠透過結構化的無障礙樹 (accessibility tree) 快照與網頁互動，無需依賴螢幕截圖或視覺調整模型。
 
-### Key Features
+> **注意：** 此專案為微軟官方 [Playwright MCP](https://github.com/microsoft/playwright-mcp) 的修改版本，僅供個人測試使用。更多詳細資訊或官方版本，請參閱[原始專案庫](https://github.com/microsoft/playwright-mcp)。
 
-- **Fast and lightweight**. Uses Playwright's accessibility tree, not pixel-based input.
-- **LLM-friendly**. No vision models needed, operates purely on structured data.
-- **Deterministic tool application**. Avoids ambiguity common with screenshot-based approaches.
+### 在 Cursor 中安裝
 
-### Requirements
-- Node.js 18 or newer
-- VS Code, Cursor, Windsurf, Claude Desktop or any other MCP client
+#### 1. 準備專案
 
-<!--
-// Generate using:
-node utils/generate-links.js
--->
-
-### Getting started
-
-First, install the Playwright MCP server with your client. A typical configuration looks like this:
-
-```js
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ]
-    }
-  }
-}
-```
-
-[<img src="https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20Server&color=0098FF" alt="Install in VS Code">](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522playwright%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522%2540playwright%252Fmcp%2540latest%2522%255D%257D) [<img alt="Install in VS Code Insiders" src="https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20Server&color=24bfa5">](https://insiders.vscode.dev/redirect?url=vscode-insiders%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522playwright%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522%2540playwright%252Fmcp%2540latest%2522%255D%257D)
-
-
-<details><summary><b>Install in VS Code</b></summary>
-
-You can also install the Playwright MCP server using the VS Code CLI:
+首先，將此專案 clone 到您的本地電腦並安裝相依套件：
 
 ```bash
-# For VS Code
-code --add-mcp '{"name":"playwright","command":"npx","args":["@playwright/mcp@latest"]}'
+git clone https://github.com/91APP/ai-playwright-ui-testing.git
+cd ai-playwright-ui-testing
+npm install
+npm run build
 ```
 
-After installation, the Playwright MCP server will be available for use with your GitHub Copilot agent in VS Code.
-</details>
+#### 2. 手動設定
 
-<details>
-<summary><b>Install in Cursor</b></summary>
+接著，在 Cursor 中手動設定 MCP 伺服器：
 
-#### Click the button to install:
+1.  前往 `Cursor 設定` -> `MCP` -> `新增 MCP 伺服器`。
+2.  依您的喜好命名。
+3.  選擇 `command` 類型。
+4.  點擊 `編輯` 並貼上以下 JSON 設定。
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=playwright&config=eyJjb21tYW5kIjoibnB4IEBwbGF5d3JpZ2h0L21jcEBsYXRlc3QifQ%3D%3D)
+**重要：** 請將 `args` 中的路徑修改為您電腦上 `cli.js` 的 **絕對路徑**。
 
-#### Or install manually:
-
-Go to `Cursor Settings` -> `MCP` -> `Add new MCP Server`. Name to your liking, use `command` type with the command `npx @playwright/mcp`. You can also verify config or add command like arguments via clicking `Edit`.
-
-```js
+```json
 {
   "mcpServers": {
-    "playwright": {
-      "command": "npx",
+    "playwright-mcp": {
+      "command": "/path/to/your/node/version/bin/node",
       "args": [
-        "@playwright/mcp@latest"
-      ]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Install in Windsurf</b></summary>
-
-Follow Windsuff MCP [documentation](https://docs.windsurf.com/windsurf/cascade/mcp). Use following configuration:
-
-```js
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Install in Claude Desktop</b></summary>
-
-Follow the MCP install [guide](https://modelcontextprotocol.io/quickstart/user), use following configuration:
-
-```js
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Install in Qodo Gen</b></summary>
-
-Open [Qodo Gen](https://docs.qodo.ai/qodo-documentation/qodo-gen) chat panel in VSCode or IntelliJ → Connect more tools → + Add new MCP → Paste the following configuration:
-
-```js
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ]
-    }
-  }
-}
-```
-
-Click <code>Save</code>.
-</details>
-
-### Configuration
-
-Playwright MCP server supports following arguments. They can be provided in the JSON configuration above, as a part of the `"args"` list:
-
-<!--- Options generated by update-readme.js -->
-
-```
-> npx @playwright/mcp@latest --help
-  --allowed-origins <origins>  semicolon-separated list of origins to allow the
-                               browser to request. Default is to allow all.
-  --blocked-origins <origins>  semicolon-separated list of origins to block the
-                               browser from requesting. Blocklist is evaluated
-                               before allowlist. If used without the allowlist,
-                               requests not matching the blocklist are still
-                               allowed.
-  --block-service-workers      block service workers
-  --browser <browser>          browser or chrome channel to use, possible
-                               values: chrome, firefox, webkit, msedge.
-  --browser-agent <endpoint>   Use browser agent (experimental).
-  --caps <caps>                comma-separated list of capabilities to enable,
-                               possible values: tabs, pdf, history, wait, files,
-                               install. Default is all.
-  --cdp-endpoint <endpoint>    CDP endpoint to connect to.
-  --config <path>              path to the configuration file.
-  --device <device>            device to emulate, for example: "iPhone 15"
-  --executable-path <path>     path to the browser executable.
-  --headless                   run browser in headless mode, headed by default
-  --host <host>                host to bind server to. Default is localhost. Use
-                               0.0.0.0 to bind to all interfaces.
-  --ignore-https-errors        ignore https errors
-  --isolated                   keep the browser profile in memory, do not save
-                               it to disk.
-  --image-responses <mode>     whether to send image responses to the client.
-                               Can be "allow", "omit", or "auto". Defaults to
-                               "auto", which sends images if the client can
-                               display them.
-  --no-sandbox                 disable the sandbox for all process types that
-                               are normally sandboxed.
-  --output-dir <path>          path to the directory for output files.
-  --port <port>                port to listen on for SSE transport.
-  --proxy-bypass <bypass>      comma-separated domains to bypass proxy, for
-                               example ".com,chromium.org,.domain.com"
-  --proxy-server <proxy>       specify proxy server, for example
-                               "http://myproxy:3128" or "socks5://myproxy:8080"
-  --save-trace                 Whether to save the Playwright Trace of the
-                               session into the output directory.
-  --storage-state <path>       path to the storage state file for isolated
-                               sessions.
-  --user-agent <ua string>     specify user agent string
-  --user-data-dir <path>       path to the user data directory. If not
-                               specified, a temporary directory will be created.
-  --viewport-size <size>       specify browser viewport size in pixels, for
-                               example "1280, 720"
-  --vision                     Run server that uses screenshots (Aria snapshots
-                               are used by default)
-```
-
-<!--- End of options generated section -->
-
-### User profile
-
-You can run Playwright MCP with persistent profile like a regular browser (default), or in the isolated contexts for the testing sessions.
-
-**Persistent profile**
-
-All the logged in information will be stored in the persistent profile, you can delete it between sessions if you'd like to clear the offline state.
-Persistent profile is located at the following locations and you can override it with the `--user-data-dir` argument.
-
-```bash
-# Windows
-%USERPROFILE%\AppData\Local\ms-playwright\mcp-{channel}-profile
-
-# macOS
-- ~/Library/Caches/ms-playwright/mcp-{channel}-profile
-
-# Linux
-- ~/.cache/ms-playwright/mcp-{channel}-profile
-```
-
-**Isolated**
-
-In the isolated mode, each session is started in the isolated profile. Every time you ask MCP to close the browser,
-the session is closed and all the storage state for this session is lost. You can provide initial storage state
-to the browser via the config's `contextOptions` or via the `--storage-state` argument. Learn more about the storage
-state [here](https://playwright.dev/docs/auth).
-
-```js
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest",
+        "/path/to/your/ai-playwright-ui-testing/cli.js",
         "--isolated",
-        "--storage-state={path/to/storage.json}"
+        "--headless"
       ]
     }
   }
 }
 ```
 
-### Configuration file
+### 多瀏覽器支援
 
-The Playwright MCP server can be configured using a JSON configuration file. You can specify the configuration file
-using the `--config` command line option:
+此版本的 Playwright MCP 採用動態方式管理多瀏覽器。您可以在 MCP 會話中，透過 `browser_create_instance` 工具來建立及管理多個獨立的瀏覽器實例。
 
-```bash
-npx @playwright/mcp@latest --config path/to/config.json
-```
+#### 1. 建立瀏覽器實例
 
-<details>
-<summary>Configuration file schema</summary>
+使用 `browser_create_instance` 工具來啟動一個新的瀏覽器。
 
-```typescript
+- **工具:** `browser_create_instance`
+- **描述:** 建立一個新的瀏覽器實例並進行特定設定。
+- **參數:**
+  - `browserId` (string, optional): 瀏覽器實例的唯一識別碼（若不提供會自動生成）。強烈建議務必主動提供一個有意義且唯一的 ID。
+  - `browserType` (enum, optional): 要建立的瀏覽器類型，可選值為 `chromium`、`firefox`、`webkit` (預設為 `chromium`)。
+  - `headless` (boolean, optional): 是否以無頭模式運行瀏覽器，會覆蓋啟動時的設定。
+  - `userDataDir` (string, optional): 指定儲存使用者資料的目錄路徑。
+  - `viewport` (object, optional): 設定瀏覽器的視窗大小，例如 `{ "width": 1280, "height": 720 }`。
+
+> **重要提示：** 在對任何瀏覽器進行操作之前，**您必須先使用 `browser_create_instance` 工具創建一個實例**。直接使用不存在的 `browserId` 呼叫工具將會導致錯誤。
+
+**範例：建立一個名為 `test_browser` 的無頭 Chrome 瀏覽器實例**
+```json
 {
-  // Browser configuration
-  browser?: {
-    // Browser type to use (chromium, firefox, or webkit)
-    browserName?: 'chromium' | 'firefox' | 'webkit';
-
-    // Keep the browser profile in memory, do not save it to disk.
-    isolated?: boolean;
-
-    // Path to user data directory for browser profile persistence
-    userDataDir?: string;
-
-    // Browser launch options (see Playwright docs)
-    // @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch
-    launchOptions?: {
-      channel?: string;        // Browser channel (e.g. 'chrome')
-      headless?: boolean;      // Run in headless mode
-      executablePath?: string; // Path to browser executable
-      // ... other Playwright launch options
-    };
-
-    // Browser context options
-    // @see https://playwright.dev/docs/api/class-browser#browser-new-context
-    contextOptions?: {
-      viewport?: { width: number, height: number };
-      // ... other Playwright context options
-    };
-
-    // CDP endpoint for connecting to existing browser
-    cdpEndpoint?: string;
-
-    // Remote Playwright server endpoint
-    remoteEndpoint?: string;
-  },
-
-  // Server configuration
-  server?: {
-    port?: number;  // Port to listen on
-    host?: string;  // Host to bind to (default: localhost)
-  },
-
-  // List of enabled capabilities
-  capabilities?: Array<
-    'core' |    // Core browser automation
-    'tabs' |    // Tab management
-    'pdf' |     // PDF generation
-    'history' | // Browser history
-    'wait' |    // Wait utilities
-    'files' |   // File handling
-    'install' | // Browser installation
-    'testing'   // Testing
-  >;
-
-  // Enable vision mode (screenshots instead of accessibility snapshots)
-  vision?: boolean;
-
-  // Directory for output files
-  outputDir?: string;
-
-  // Network configuration
-  network?: {
-    // List of origins to allow the browser to request. Default is to allow all. Origins matching both `allowedOrigins` and `blockedOrigins` will be blocked.
-    allowedOrigins?: string[];
-
-    // List of origins to block the browser to request. Origins matching both `allowedOrigins` and `blockedOrigins` will be blocked.
-    blockedOrigins?: string[];
-  };
- 
-  /**
-   * Do not send image responses to the client.
-   */
-  noImageResponses?: boolean;
-}
-```
-</details>
-
-### Standalone MCP server
-
-When running headed browser on system w/o display or from worker processes of the IDEs,
-run the MCP server from environment with the DISPLAY and pass the `--port` flag to enable SSE transport.
-
-```bash
-npx @playwright/mcp@latest --port 8931
-```
-
-And then in MCP client config, set the `url` to the SSE endpoint:
-
-```js
-{
-  "mcpServers": {
-    "playwright": {
-      "url": "http://localhost:8931/sse"
-    }
-  }
+  "tool": "browser_create_instance",
+  "browserId": "test_browser",
+  "browserType": "chromium",
+  "headless": true
 }
 ```
 
-<details>
-<summary><b>Docker</b></summary>
+#### 2. 執行自動化測試
 
-**NOTE:** The Docker implementation only supports headless chromium at the moment.
+建立瀏覽器實例後，您便可以對其執行各種自動化操作。
 
-```js
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--init", "--pull=always", "mcr.microsoft.com/playwright/mcp"]
-    }
-  }
-}
-```
+在呼叫其他瀏覽器相關工具（如 `browser_navigate`, `browser_click` 等）時，請務必在參數中帶上您先前指定的 `browserId`（在此範例中為 `test_browser`），以確保指令在正確的瀏覽器實例上執行。
 
-You can build the Docker image yourself.
+#### 3. 管理瀏覽器實例
 
-```
-docker build -t mcr.microsoft.com/playwright/mcp .
-```
-</details>
+除了建立實例，您還可以使用以下工具來管理它們：
 
-<details>
-<summary><b>Programmatic usage</b></summary>
+- **browser_list_instances**:
+  - **描述:** 列出所有目前活躍的瀏覽器實例及其狀態。
+  - **範例:** `{"tool": "browser_list_instances"}`
 
-```js
-import http from 'http';
+- **browser_close_instance**:
+  - **描述:** 關閉一個指定的瀏覽器實例。如果提供的 `browserId` 不存在，工具將會回報錯誤。
+  - **參數:**
+    - `browserId` (string): 要關閉的瀏覽器實例 ID。
+  - **範例:** `{"tool": "browser_close_instance", "browserId": "test_browser"}`
 
-import { createConnection } from '@playwright/mcp';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+- **browser_get_stats**:
+  - **描述:** 獲取關於瀏覽器實例的統計資訊，例如總數、最大實例數等。
+  - **範例:** `{"tool": "browser_get_stats"}`
 
-http.createServer(async (req, res) => {
-  // ...
+#### 4. 自動清理
 
-  // Creates a headless Playwright MCP server with SSE transport
-  const connection = await createConnection({ browser: { launchOptions: { headless: true } } });
-  const transport = new SSEServerTransport('/messages', res);
-  await connection.sever.connect(transport);
-
-  // ...
-});
-```
-</details>
-
-### Tools
-
-The tools are available in two modes:
-
-1. **Snapshot Mode** (default): Uses accessibility snapshots for better performance and reliability
-2. **Vision Mode**: Uses screenshots for visual-based interactions
-
-To use Vision Mode, add the `--vision` flag when starting the server:
-
-```js
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest",
-        "--vision"
-      ]
-    }
-  }
-}
-```
-
-Vision Mode works best with the computer use models that are able to interact with elements using
-X Y coordinate space, based on the provided screenshot.
-
-<!--- Tools generated by update-readme.js -->
-
-<details>
-<summary><b>Interactions</b></summary>
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_snapshot**
-  - Title: Page snapshot
-  - Description: Capture accessibility snapshot of the current page, this is better than screenshot
-  - Parameters: None
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_click**
-  - Title: Click
-  - Description: Perform click on a web page
-  - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `ref` (string): Exact target element reference from the page snapshot
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_drag**
-  - Title: Drag mouse
-  - Description: Perform drag and drop between two elements
-  - Parameters:
-    - `startElement` (string): Human-readable source element description used to obtain the permission to interact with the element
-    - `startRef` (string): Exact source element reference from the page snapshot
-    - `endElement` (string): Human-readable target element description used to obtain the permission to interact with the element
-    - `endRef` (string): Exact target element reference from the page snapshot
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_hover**
-  - Title: Hover mouse
-  - Description: Hover over element on page
-  - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `ref` (string): Exact target element reference from the page snapshot
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_type**
-  - Title: Type text
-  - Description: Type text into editable element
-  - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `ref` (string): Exact target element reference from the page snapshot
-    - `text` (string): Text to type into the element
-    - `submit` (boolean, optional): Whether to submit entered text (press Enter after)
-    - `slowly` (boolean, optional): Whether to type one character at a time. Useful for triggering key handlers in the page. By default entire text is filled in at once.
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_select_option**
-  - Title: Select option
-  - Description: Select an option in a dropdown
-  - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `ref` (string): Exact target element reference from the page snapshot
-    - `values` (array): Array of values to select in the dropdown. This can be a single value or multiple values.
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_press_key**
-  - Title: Press a key
-  - Description: Press a key on the keyboard
-  - Parameters:
-    - `key` (string): Name of the key to press or a character to generate, such as `ArrowLeft` or `a`
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_wait_for**
-  - Title: Wait for
-  - Description: Wait for text to appear or disappear or a specified time to pass
-  - Parameters:
-    - `time` (number, optional): The time to wait in seconds
-    - `text` (string, optional): The text to wait for
-    - `textGone` (string, optional): The text to wait for to disappear
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_file_upload**
-  - Title: Upload files
-  - Description: Upload one or multiple files
-  - Parameters:
-    - `paths` (array): The absolute paths to the files to upload. Can be a single file or multiple files.
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_handle_dialog**
-  - Title: Handle a dialog
-  - Description: Handle a dialog
-  - Parameters:
-    - `accept` (boolean): Whether to accept the dialog.
-    - `promptText` (string, optional): The text of the prompt in case of a prompt dialog.
-  - Read-only: **false**
-
-</details>
-
-<details>
-<summary><b>Navigation</b></summary>
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_navigate**
-  - Title: Navigate to a URL
-  - Description: Navigate to a URL
-  - Parameters:
-    - `url` (string): The URL to navigate to
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_navigate_back**
-  - Title: Go back
-  - Description: Go back to the previous page
-  - Parameters: None
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_navigate_forward**
-  - Title: Go forward
-  - Description: Go forward to the next page
-  - Parameters: None
-  - Read-only: **true**
-
-</details>
-
-<details>
-<summary><b>Resources</b></summary>
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_take_screenshot**
-  - Title: Take a screenshot
-  - Description: Take a screenshot of the current page. You can't perform actions based on the screenshot, use browser_snapshot for actions.
-  - Parameters:
-    - `raw` (boolean, optional): Whether to return without compression (in PNG format). Default is false, which returns a JPEG image.
-    - `filename` (string, optional): File name to save the screenshot to. Defaults to `page-{timestamp}.{png|jpeg}` if not specified.
-    - `element` (string, optional): Human-readable element description used to obtain permission to screenshot the element. If not provided, the screenshot will be taken of viewport. If element is provided, ref must be provided too.
-    - `ref` (string, optional): Exact target element reference from the page snapshot. If not provided, the screenshot will be taken of viewport. If ref is provided, element must be provided too.
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_pdf_save**
-  - Title: Save as PDF
-  - Description: Save page as PDF
-  - Parameters:
-    - `filename` (string, optional): File name to save the pdf to. Defaults to `page-{timestamp}.pdf` if not specified.
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_network_requests**
-  - Title: List network requests
-  - Description: Returns all network requests since loading the page
-  - Parameters: None
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_console_messages**
-  - Title: Get console messages
-  - Description: Returns all console messages
-  - Parameters: None
-  - Read-only: **true**
-
-</details>
-
-<details>
-<summary><b>Utilities</b></summary>
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_install**
-  - Title: Install the browser specified in the config
-  - Description: Install the browser specified in the config. Call this if you get an error about the browser not being installed.
-  - Parameters: None
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_close**
-  - Title: Close browser
-  - Description: Close the page
-  - Parameters: None
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_resize**
-  - Title: Resize browser window
-  - Description: Resize the browser window
-  - Parameters:
-    - `width` (number): Width of the browser window
-    - `height` (number): Height of the browser window
-  - Read-only: **true**
-
-</details>
-
-<details>
-<summary><b>Tabs</b></summary>
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_tab_list**
-  - Title: List tabs
-  - Description: List browser tabs
-  - Parameters: None
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_tab_new**
-  - Title: Open a new tab
-  - Description: Open a new tab
-  - Parameters:
-    - `url` (string, optional): The URL to navigate to in the new tab. If not provided, the new tab will be blank.
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_tab_select**
-  - Title: Select a tab
-  - Description: Select a tab by index
-  - Parameters:
-    - `index` (number): The index of the tab to select
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_tab_close**
-  - Title: Close a tab
-  - Description: Close a tab
-  - Parameters:
-    - `index` (number, optional): The index of the tab to close. Closes current tab if not provided.
-  - Read-only: **false**
-
-</details>
-
-<details>
-<summary><b>Testing</b></summary>
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_generate_playwright_test**
-  - Title: Generate a Playwright test
-  - Description: Generate a Playwright test for given scenario
-  - Parameters:
-    - `name` (string): The name of the test
-    - `description` (string): The description of the test
-    - `steps` (array): The steps of the test
-  - Read-only: **true**
-
-</details>
-
-<details>
-<summary><b>Vision mode</b></summary>
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_screen_capture**
-  - Title: Take a screenshot
-  - Description: Take a screenshot of the current page
-  - Parameters: None
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_screen_move_mouse**
-  - Title: Move mouse
-  - Description: Move mouse to a given position
-  - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `x` (number): X coordinate
-    - `y` (number): Y coordinate
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_screen_click**
-  - Title: Click
-  - Description: Click left mouse button
-  - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `x` (number): X coordinate
-    - `y` (number): Y coordinate
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_screen_drag**
-  - Title: Drag mouse
-  - Description: Drag left mouse button
-  - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `startX` (number): Start X coordinate
-    - `startY` (number): Start Y coordinate
-    - `endX` (number): End X coordinate
-    - `endY` (number): End Y coordinate
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_screen_type**
-  - Title: Type text
-  - Description: Type text
-  - Parameters:
-    - `text` (string): Text to type into the element
-    - `submit` (boolean, optional): Whether to submit entered text (press Enter after)
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_press_key**
-  - Title: Press a key
-  - Description: Press a key on the keyboard
-  - Parameters:
-    - `key` (string): Name of the key to press or a character to generate, such as `ArrowLeft` or `a`
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_wait_for**
-  - Title: Wait for
-  - Description: Wait for text to appear or disappear or a specified time to pass
-  - Parameters:
-    - `time` (number, optional): The time to wait in seconds
-    - `text` (string, optional): The text to wait for
-    - `textGone` (string, optional): The text to wait for to disappear
-  - Read-only: **true**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_file_upload**
-  - Title: Upload files
-  - Description: Upload one or multiple files
-  - Parameters:
-    - `paths` (array): The absolute paths to the files to upload. Can be a single file or multiple files.
-  - Read-only: **false**
-
-<!-- NOTE: This has been generated via update-readme.js -->
-
-- **browser_handle_dialog**
-  - Title: Handle a dialog
-  - Description: Handle a dialog
-  - Parameters:
-    - `accept` (boolean): Whether to accept the dialog.
-    - `promptText` (string, optional): The text of the prompt in case of a prompt dialog.
-  - Read-only: **false**
-
-</details>
-
-
-<!--- End of tools generated section -->
+為了有效管理系統資源，本伺服器具備自動清理機制：
+- **閒置超時:** 閒置超過 30 分鐘的瀏覽器實例將會被自動關閉。
+- **數量上限:** 系統預設最多同時存在 10 個瀏覽器實例。當達到上限時，最久未被使用的實例將會被關閉，以便為新的實例釋放資源。

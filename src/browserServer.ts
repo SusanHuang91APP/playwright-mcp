@@ -16,13 +16,12 @@
 
 /* eslint-disable no-console */
 
-import net from 'net';
-
 import { program } from 'commander';
 import playwright from 'playwright';
 
 import { HttpServer } from './httpServer.js';
 import { packageJSON } from './package.js';
+import { findFreePort } from './tools/utils.js';
 
 import type http from 'http';
 
@@ -182,16 +181,5 @@ function readBody<T>(req: http.IncomingMessage): Promise<T> {
     const chunks: Buffer[] = [];
     req.on('data', (chunk: Buffer) => chunks.push(chunk));
     req.on('end', () => resolve(JSON.parse(Buffer.concat(chunks).toString())));
-  });
-}
-
-async function findFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.listen(0, () => {
-      const { port } = server.address() as net.AddressInfo;
-      server.close(() => resolve(port));
-    });
-    server.on('error', reject);
   });
 }

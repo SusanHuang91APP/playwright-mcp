@@ -25,7 +25,7 @@ const browserCreate: ToolFactory = () => defineTool({
     title: 'Create browser instance',
     description: 'Create a new browser instance with specific configuration',
     inputSchema: z.object({
-      id: z.string().optional().describe('Unique identifier for the browser instance (auto-generated if not provided)'),
+      browserId: z.string().optional().describe('Unique identifier for the browser instance (auto-generated if not provided)'),
       browserType: z.enum(['chromium', 'firefox', 'webkit']).optional().describe('Type of browser to create'),
       headless: z.boolean().optional().describe('Whether to run browser in headless mode'),
       userDataDir: z.string().optional().describe('Directory to store user data'),
@@ -124,7 +124,7 @@ const browserClose: ToolFactory = () => defineTool({
     title: 'Close browser instance',
     description: 'Close a specific browser instance',
     inputSchema: z.object({
-      id: z.string().describe('ID of the browser instance to close'),
+      browserId: z.string().describe('ID of the browser instance to close'),
     }),
     type: 'destructive',
   },
@@ -134,10 +134,10 @@ const browserClose: ToolFactory = () => defineTool({
     if (!manager)
       throw new Error('Context manager not initialized');
 
-    await manager.closeBrowserInstance(params.id);
+    await manager.closeBrowserInstance(params.browserId);
 
     const code = [
-      `// Closed browser instance: ${params.id}`,
+      `// Closed browser instance: ${params.browserId}`,
     ];
 
     return {

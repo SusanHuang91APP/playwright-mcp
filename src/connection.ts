@@ -97,25 +97,18 @@ async function resolveContext(
   args: any,
   toolName?: string
 ): Promise<Context> {
-  // 🔑 特殊處理：browser_create_instance 工具總是使用 defaultContext
-  // 如果沒有指定 browserId，使用預設 Context（向後兼容）
+  // 🔑 特殊處理：`browser_create_instance` 工具總是使用 `defaultContext`。
+  // 這是因為它是一個元操作(meta-operation)，用於創建新的瀏覽器上下文，而不是在某個現有上下文中執行。
+  // 如果沒有指定 `browserId`，也會使用預設 Context，以保持向後兼容性。
   if (!args?.browserId || toolName === 'browser_create_instance')
     return defaultContext;
 
-  // 如果指定了 browserId，嘗試獲取對應的 Context
+  // 如果指定了 `browserId`，則嘗試獲取對應的 Context。
+  // 如果找不到，將拋出一個明確的錯誤，強制使用者必須先創建實例。
   try {
     return await manager.getContext(args.browserId);
   } catch (error) {
-    // 🔧 改進：如果實例不存在，自動創建它（除了 browser_create_instance 工具）
-    if (toolName !== 'browser_create_instance') {
-      try {
-        const browserId = await manager.createBrowserInstance({ id: args.browserId });
-        return await manager.getContext(browserId);
-      } catch (createError) {
-        throw new Error(`Browser instance '${args.browserId}' not found and could not be created automatically. ${createError}`);
-      }
-    }
-    throw new Error(`Browser instance '${args.browserId}' not found. Use browser_create_instance to create it first.`);
+    throw new Error(`Browser instance '${args.browserId}' not found. Use the 'browser_create_instance' tool to create it first.`);
   }
 }
 
