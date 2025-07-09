@@ -86,7 +86,7 @@ export class ContextManager {
       browserName: (config.browserType || 'chromium') as 'chromium' | 'firefox' | 'webkit',
       launchOptions: {
         ...this._baseConfig.browser.launchOptions,
-        headless: config.headless,
+        headless: config.headless ?? this._baseConfig.browser.launchOptions?.headless,
       },
       contextOptions: {
         ...this._baseConfig.browser.contextOptions,
